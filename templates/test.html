@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <button onclick="train()">Train</button>
+    <button onclick="predict()">Predict</button>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+    <script type="text/javascript">
+        function train() {
+            $.post('http://localhost:5000/train', {
+                    'alg_name': 'LROLS',
+                    'data_path': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir/train.csv',
+                    'model_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir',
+                    'result_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir'
+                });
+        }
+
+        function predict() {
+            $.post('http://localhost:5000/predict', {
+                    'alg_name': 'LROLS',
+                    'data_path': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir/predict.csv',
+                    'model_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir',
+                    'result_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir'
+                });
+        }
+    </script>
+</body>
+
+</html>
