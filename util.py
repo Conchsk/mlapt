@@ -1,3 +1,5 @@
+from multiprocessing.pool import Pool
+
 import numpy as np
 import redis
 
@@ -18,35 +20,42 @@ class DataAdapter:
 
 
 class ProcessPool:
-    process_pool = None
+    def __init__(self):
+        self.process_pool = Pool()
+        self.redis_pool = RedisPool()
 
-    @staticmethod
-    def apply(alg_func, data_path: str, model_dir: str, result_dir: str) -> str:
-        task_id = str(ProcessPool.get_next_task_id())
-        ProcessPool.process_pool.apply_async(alg_func, args=(DataAdapter.csv2array(data_path), model_dir, result_dir,
-                                                             task_id, ProcessPool.running_handler, ProcessPool.finished_handler, ProcessPool.error_handler))
+    def apply(self, alg_func, data_path: str, model_dir: str, result_dir: str) -> str:
+        task_id = str(self.redis_pool.incr('task_id'))
+        self.process_pool.apply_async(alg_func, args=(DataAdapter.csv2array(data_path), model_dir, result_dir,
+                                                      task_id,
+                                                      ProcessPool.running_handler,
+                                                      ProcessPool.finished_handler,
+                                                      ProcessPool.error_handler))
         return task_id
 
     @staticmethod
-    def get_next_task_id():
-        return RedisPool.get_conn().incr('task_id')
-
-    @staticmethod
     def running_handler(task_id):
-        RedisPool.get_conn().set(task_id, Constants.TASK_RUNNING)
+        RedisPool().set(task_id, str(Constants.TASK_RUNNING))
 
     @staticmethod
     def finished_handler(task_id):
-        RedisPool.get_conn().set(task_id, Constants.TASK_FINISHED)
+        RedisPool().set(task_id, str(Constants.TASK_FINISHED))
 
     @staticmethod
     def error_handler(task_id):
-        RedisPool.get_conn().set(task_id, Constants.TASK_ERROR)
+        RedisPool().set(task_id, str(Constants.TASK_ERROR))
 
 
 class RedisPool:
-    redis_pool = None
+    def __init__(self):
+        self.redis_pool = redis.ConnectionPool(
+            host='192.168.1.67', port=6379, decode_responses=True)
 
-    @staticmethod
-    def get_conn() -> redis.Redis:
-        return redis.Redis(connection_pool=RedisPool.redis_pool)
+    def incr(self, name: str) -> int:
+        return redis.StrictRedis(connection_pool=self.redis_pool).incr(name)
+
+    def get(self, name: str) -> str:
+        return redis.StrictRedis(connection_pool=self.redis_pool).get(name)
+
+    def set(self, name: str, value: str):
+        redis.StrictRedis(connection_pool=self.redis_pool).set(name, value)

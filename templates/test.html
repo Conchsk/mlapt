@@ -17,9 +17,9 @@
             $.post('http://localhost:5000/submit', {
                 'alg_name': 'LROLS',
                 'task_type': 0,
-                'data_path': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir/train.csv',
-                'model_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir',
-                'result_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir'
+                'data_path': 'testworkdir/train.csv',
+                'model_dir': 'testworkdir',
+                'result_dir': 'testworkdir'
             }, function (data) {
                 console.log(data);
             });
@@ -29,9 +29,9 @@
             $.post('http://localhost:5000/submit', {
                 'alg_name': 'LROLS',
                 'task_type': 1,
-                'data_path': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir/predict.csv',
-                'model_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir',
-                'result_dir': 'C:/Users/Conch/Workspaces/code/mlapt/testworkdir'
+                'data_path': 'testworkdir/predict.csv',
+                'model_dir': 'testworkdir',
+                'result_dir': 'testworkdir'
             }, function (data) {
                 console.log(data);
             });

@@ -1,13 +1,18 @@
-import util
 from multiprocessing.pool import Pool
-import time
 
 
-def test_func(a, b, c, d, e, f, g):
-    print('1')
+class testclass:
+    testvar = 0
+
+
+def test_func():
+    testclass.testvar = testclass.testvar + 1
 
 
 if __name__ == '__main__':
-    util.ProcessPool.process_pool = Pool()
-    util.ProcessPool.apply(test_func, '1', '2', '3')
-    time.sleep(5)
+    pool = Pool()
+    for i in range(5):
+        pool.apply_async(test_func)
+    pool.close()
+    pool.join()
+    print(testclass.testvar)

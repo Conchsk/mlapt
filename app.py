@@ -1,7 +1,4 @@
 # coding=utf-8
-from multiprocessing.pool import Pool
-
-import redis
 from flask import Flask, render_template, request
 from flask_cors import CORS
 
@@ -13,7 +10,7 @@ CORS(app)
 
 
 @app.route('/test', methods=['GET'])
-def test2():
+def test():
     return 'hello world'
 
 
@@ -33,12 +30,10 @@ def train_handler():
 
     if task_type == str(util.Constants.TYPE_TRIAN):
         if alg_name == 'LROLS':
-            task_id = util.ProcessPool.apply(
-                LinearRegression.OrdinaryLeastSquare.train, data_path, model_dir, result_dir)
+            task_id = process_pool.apply(LinearRegression.OrdinaryLeastSquare.train, data_path, model_dir, result_dir)
     elif task_type == str(util.Constants.TYPE_PREDICT):
         if alg_name == 'LROLS':
-            task_id = util.ProcessPool.apply(
-                LinearRegression.OrdinaryLeastSquare.predict, data_path, model_dir, result_dir)
+            task_id = process_pool.apply(LinearRegression.OrdinaryLeastSquare.predict, data_path, model_dir, result_dir)
     else:
         task_id = '-1'
 
@@ -49,7 +44,7 @@ def train_handler():
 @app.route('/status', methods=['GET'])
 def status_handler():
     task_id = request.values.get('task_id')
-    status = util.RedisPool.get_conn().get(task_id)
+    status = process_pool.redis_pool.get(task_id)
     if status is not None:
         if status == str(util.Constants.TASK_RUNNING):
             return 'task running'
@@ -61,7 +56,5 @@ def status_handler():
 
 
 if __name__ == '__main__':
-    util.ProcessPool.process_pool = Pool()
-    util.RedisPool.redis_pool = redis.ConnectionPool(
-        host='localhost', port=6379, max_connections=4, decode_responses=True)
+    process_pool = util.ProcessPool()
     app.run(host='localhost', port=5000)
