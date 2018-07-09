@@ -44,7 +44,7 @@ def train_handler():
 @app.route('/status', methods=['GET'])
 def status_handler():
     task_id = request.values.get('task_id')
-    status = process_pool.redis_pool.get(task_id)
+    status = redis_pool.get(task_id)
     if status is not None:
         if status == str(util.Constants.TASK_RUNNING):
             return 'task running'
@@ -56,5 +56,6 @@ def status_handler():
 
 
 if __name__ == '__main__':
+    redis_pool = util.RedisPool()
     process_pool = util.ProcessPool()
     app.run(host='localhost', port=5000)

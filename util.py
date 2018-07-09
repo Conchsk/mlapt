@@ -13,12 +13,12 @@ class Constants:
     TASK_FINISHED = 1
     TASK_ERROR = 2
 
-    REDIS_HOST = '127.0.0.1'
+    REDIS_HOST = '192.168.1.67'
     REDIS_PORT = 6379
 
-    HDFS_HOST = '127.0.0.1'
-    HDFS_PORT = 9870
-    HDFS_USER = 'conch'
+    HDFS_HOST = '192.168.1.83'
+    HDFS_PORT = 50070
+    HDFS_USER = 'lab106'
 
 
 class DataAdapter:
@@ -81,14 +81,19 @@ class HdfsFile:
     def __init__(self, path):
         self.path = path
         self.name = path.split('\\')[-1]
-
-        client = InsecureClient(
-            url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}', user=Constants.HDFS_USER)
-        with client.read(self.path) as reader:
-            self.content = reader.read()
+        self.content = None
         self.fptr = 0
 
+    def __cache_content(self):
+        if self.content is None:
+            client = InsecureClient(
+                url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}', user=Constants.HDFS_USER)
+            with client.read(self.path) as reader:
+                self.content = reader.read()
+
     def read(self, size=None):
+        self.__cache_content()
+
         if size is None:
             return self.content
         else:
@@ -98,6 +103,8 @@ class HdfsFile:
             return buffer
 
     def readline(self, size=None):
+        self.__cache_content()
+
         offset = 0
         while self.fptr + offset < len(self.content) and self.content[self.fptr + offset] != 10:
             offset += 1
@@ -114,4 +121,4 @@ class HdfsFile:
     def write(self, content):
         client = InsecureClient(
             url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}', user=Constants.HDFS_USER)
-        client.write(hdfs_path=self.path, data=content, overwrite=True)
+        client.write(hdfs_path=self.path, data=content)
