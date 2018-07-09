@@ -1,18 +1,14 @@
-from multiprocessing.pool import Pool
+from util import HdfsFile, DataAdapter
 
-
-class testclass:
-    testvar = 0
-
-
-def test_func():
-    testclass.testvar = testclass.testvar + 1
-
+from sklearn import linear_model
+from sklearn.externals import joblib
 
 if __name__ == '__main__':
-    pool = Pool()
-    for i in range(5):
-        pool.apply_async(test_func)
-    pool.close()
-    pool.join()
-    print(testclass.testvar)
+    data = DataAdapter.csv2array('testworkdir/predict.csv')
+    # reg = linear_model.LinearRegression()
+    # reg.fit(data[:, :-1], data[:, -1])
+    file = HdfsFile('LROLS.m')
+    #file = open('testworkdir/LROLS.m', 'rb')
+    reg = joblib.load(file)
+    print(reg.predict(data))
+
