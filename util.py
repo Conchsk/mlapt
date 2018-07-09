@@ -13,59 +13,19 @@ class Constants:
     TASK_FINISHED = 1
     TASK_ERROR = 2
 
-    REDIS_HOST = '192.168.1.67'
+    REDIS_HOST = '127.0.0.1'
     REDIS_PORT = 6379
 
-    HDFS_HOST = '192.168.1.83'
-    HDFS_PORT = 50070
-    HDFS_USER = 'lab106'
-
-
-class DataAdapter:
-    @staticmethod
-    def csv2array(path: str) -> np.ndarray:
-        return np.loadtxt(path, delimiter=',', skiprows=1)
-
-
-class ProcessPool:
-    def __init__(self):
-        self.process_pool = Pool()
-
-    def apply(self, alg_func, data_path: str, model_dir: str, result_dir: str) -> str:
-        task_id = str(RedisPool().incr('task_id'))
-        self.process_pool.apply_async(alg_func, args=(DataAdapter.csv2array(data_path), model_dir, result_dir,
-                                                      task_id,
-                                                      ProcessPool.running_handler,
-                                                      ProcessPool.finished_handler,
-                                                      ProcessPool.error_handler))
-        return task_id
-
-    def testfunc(self, alg_func, task_id):
-        redis_pool = RedisPool()
-        try:
-            redis_pool.set(task_id, str(Constants.TASK_RUNNING))
-            alg_func()
-            redis_pool.set(task_id, str(Constants.TASK_FINISHED))
-        except Exception:
-            redis_pool.set(task_id, str(Constants.TASK_ERROR))
-
-    @staticmethod
-    def running_handler(task_id):
-        RedisPool().set(task_id, str(Constants.TASK_RUNNING))
-
-    @staticmethod
-    def finished_handler(task_id):
-        RedisPool().set(task_id, str(Constants.TASK_FINISHED))
-
-    @staticmethod
-    def error_handler(task_id):
-        RedisPool().set(task_id, str(Constants.TASK_ERROR))
+    HDFS_HOST = '127.0.0.1'
+    HDFS_PORT = 9870
+    HDFS_USER = 'conch'
 
 
 class RedisPool:
     def __init__(self):
-        self.redis_pool = redis.ConnectionPool(
-            host=Constants.REDIS_HOST, port=Constants.REDIS_PORT, decode_responses=True)
+        self.redis_pool = redis.ConnectionPool(host=Constants.REDIS_HOST,
+                                               port=Constants.REDIS_PORT,
+                                               decode_responses=True)
 
     def incr(self, name: str) -> int:
         return redis.StrictRedis(connection_pool=self.redis_pool).incr(name)
@@ -78,20 +38,53 @@ class RedisPool:
 
 
 class HdfsFile:
-    def __init__(self, path):
+    '''HDFS File Object
+
+    Keyword arguments:
+        path -- HDFS file path
+    '''
+
+    def __init__(self, path: str):
         self.path = path
         self.name = path.split('\\')[-1]
         self.content = None
         self.fptr = 0
+        self.client = InsecureClient(url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}',
+                                     user=Constants.HDFS_USER)
 
+    # iterable compatible
+    def __iter__(self):
+        return self
+
+    # iterator compatible
+    def __next__(self):
+        buffer = self.readline()
+        if buffer == '':
+            raise StopIteration()
+        return buffer
+
+    # cache content in memeory before reading
     def __cache_content(self):
         if self.content is None:
-            client = InsecureClient(
-                url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}', user=Constants.HDFS_USER)
-            with client.read(self.path) as reader:
+            with self.client.read(self.path) as reader:
                 self.content = reader.read()
 
-    def read(self, size=None):
+    def close(self):
+        self.flush()
+
+    def exists(self) -> bool:
+        if self.client.status(hdfs_path=self.path, strict=False) is None:
+            return False
+        return True
+
+    def flush(self):
+        if self.exists():
+            self.client.write(hdfs_path=self.path,
+                              data=self.content, overwrite=True)
+        else:
+            self.client.write(hdfs_path=self.path, data=self.content)
+
+    def read(self, size: int=None):
         self.__cache_content()
 
         if size is None:
@@ -102,12 +95,13 @@ class HdfsFile:
             self.fptr += offset
             return buffer
 
-    def readline(self, size=None):
+    def readline(self, size: int=None):
         self.__cache_content()
 
         offset = 0
-        while self.fptr + offset < len(self.content) and self.content[self.fptr + offset] != 10:
+        while self.fptr + offset < len(self.content) and self.content[self.fptr + offset] not in [10, '\n']:
             offset += 1
+
         if offset == 0:
             return ''
         else:
@@ -115,10 +109,25 @@ class HdfsFile:
             self.fptr += offset + 1
             return buffer
 
-    def seek(self, cookie):
+    def seek(self, cookie: int):
         self.fptr = cookie
 
-    def write(self, content):
-        client = InsecureClient(
-            url=f'http://{Constants.HDFS_HOST}:{Constants.HDFS_PORT}', user=Constants.HDFS_USER)
-        client.write(hdfs_path=self.path, data=content)
+    def write(self, text) -> int:
+        if self.content is None:
+            self.content = text
+        else:
+            self.content += text
+        self.flush()
+        print(self.content)
+        return len(text)
+
+
+def context(task_id: str, alg_func, args: set, data_path: str, model_path: str, result_path: str):
+    redis_pool = RedisPool()
+    try:
+        redis_pool.set(task_id, str(Constants.TASK_RUNNING))
+        alg_func(args, HdfsFile(data_path), HdfsFile(
+            model_path), HdfsFile(result_path))
+        redis_pool.set(task_id, str(Constants.TASK_FINISHED))
+    except Exception:
+        redis_pool.set(task_id, str(Constants.TASK_ERROR))
