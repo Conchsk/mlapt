@@ -1,0 +1,3 @@
+HDFS_HOST = '127.0.0.1'
+HDFS_PORT = 9870
+HDFS_USER = 'conch'

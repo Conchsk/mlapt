@@ -16,10 +16,11 @@
         function my_train() {
             $.post('http://localhost:5000/submit', {
                 'alg_name': 'LROLS',
-                'task_type': 0,
+                'alg_args': {},
+                'task_type': 'train',
                 'data_path': 'testworkdir/train.csv',
-                'model_dir': 'testworkdir',
-                'result_dir': 'testworkdir'
+                'model_path': 'testworkdir/LROLS.m',
+                'result_path': 'testworkdir/LROLS_train.json'
             }, function (data) {
                 console.log(data);
             });
@@ -28,10 +29,11 @@
         function my_predict() {
             $.post('http://localhost:5000/submit', {
                 'alg_name': 'LROLS',
-                'task_type': 1,
+                'alg_args': {},
+                'task_type': 'predict',
                 'data_path': 'testworkdir/predict.csv',
-                'model_dir': 'testworkdir',
-                'result_dir': 'testworkdir'
+                'model_path': 'testworkdir/LROLS.m',
+                'result_path': 'testworkdir/LROLS_predict.json'
             }, function (data) {
                 console.log(data);
             });
